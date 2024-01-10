@@ -11,7 +11,7 @@ typedef enum ProcessType {
 } ProcessType;
 
 typedef enum TimeQuantum {
-    PLATINUM_TIME_QUANTUM = 120,
+    PLATINUM_TIME_QUANTUM = 100000000, //120,
     GOLD_TIME_QUANTUM = 120,
     SILVER_TIME_QUANTUM = 80
 } TimeQuantum;
@@ -19,6 +19,7 @@ typedef enum TimeQuantum {
 typedef enum ProcessStatus {
     WAITING,
     READY,
+    IN_QUEUE,
     RUNNING,
     FINISHED
 } ProcessStatus;

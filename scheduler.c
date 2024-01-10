@@ -51,7 +51,7 @@ Scheduler* read_processes() {
         char** tokens = split(line);
         Process* process = get_process(tokens[0]);
         process->priority = atoi(tokens[1]);
-        process->arrival_time = atoi(tokens[2]);
+        process->arrival_time = process->queue_entry_time = atoi(tokens[2]);
         char* process_type = tokens[3];
 
         if (strcmp(process_type, "PLATINUM") == 0) {
@@ -107,8 +107,23 @@ void handle_arrived_processes(Scheduler* scheduler) {
 
         for (int i = 0; i < scheduler->num_processes; i++) {
             Process* process = &scheduler->processes[i];
-            if (process->arrival_time <= scheduler->current_time && process->status == WAITING) {
-                if (arrived_process == NULL || process->arrival_time < arrived_process->arrival_time || (process->arrival_time == arrived_process->arrival_time && strcmp(process->name, arrived_process->name) < 0)) {
+            if (process->status == FINISHED) {
+                continue;
+            }
+            if (process->status == IN_QUEUE) {
+                continue;
+            }
+            if (process->status == RUNNING) {
+                continue;
+            }
+            if (process->arrival_time <= scheduler->current_time) {
+                if (arrived_process == NULL) {
+                    arrived_process = process;
+                }
+                else if (process->queue_entry_time < arrived_process->queue_entry_time) {
+                    arrived_process = process;
+                }
+                else if (process->queue_entry_time == arrived_process->queue_entry_time && strcmp(process->name, arrived_process->name) < 0) {
                     arrived_process = process;
                 }
             }
@@ -118,7 +133,7 @@ void handle_arrived_processes(Scheduler* scheduler) {
             break;
         }
 
-        arrived_process->status = READY;
+        arrived_process->status = IN_QUEUE;
         add_process_to_queue(arrived_process);
 
     } while (arrived_process != NULL);
@@ -170,10 +185,11 @@ void release_process(Scheduler* scheduler) {
     }
 
     curr_process->status = READY;
-    add_process_to_queue(curr_process);
+    curr_process->queue_entry_time = scheduler->current_time;
 }
 
 void context_switch(Scheduler* scheduler, Process* switched) {
+
 #if DEBUG == 1
     if (scheduler->last_executed_process != switched)
         fprintf(stderr, "time %d: context_switch (%s, %s), duration=10, finished_at=%d\n", 
@@ -247,14 +263,14 @@ Process* simulate(Scheduler* scheduler) {
                 handle_arrived_processes(scheduler);
                 continue;
             }
-            
-            handle_arrived_processes(scheduler);
 
             if (curr_process->quantum_burst_time >= get_time_quantum(curr_process)) {
                 curr_process->quantum_count++;
                 check_promotions(curr_process);
                 release_process(scheduler);
             }
+            
+            handle_arrived_processes(scheduler);
 
         } 
     }
