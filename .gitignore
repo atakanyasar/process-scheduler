@@ -1,0 +1,6 @@
+.vscode
+inputs
+*.pdf
+input.txt
+output.txt
+scheduler
