@@ -30,11 +30,13 @@ typedef struct {
     int priority;
     int arrival_time;
     int end_time;
+    int queue_entry_time;
     ProcessType type;
     ProcessStatus status;
     int last_instruction;
     int quantum_burst_time;
-    int quantum_ended_count;
+    int promotion_burst_time;
+    int quantum_count;
 } Process;
 
 int get_burst_time(Process* process) {
@@ -125,6 +127,27 @@ Process* get_process(char* process_name) {
     
     processes[num_processes++] = *process;
     return process;
+}
+
+void check_promotions(Process* curr_process) {
+    if (curr_process->type == SILVER && curr_process->quantum_count == 3) {
+        // curr_process->quantum_burst_time = 0;
+        curr_process->promotion_burst_time = 0;
+        curr_process->quantum_count = 0;
+        curr_process->type = GOLD;
+#if DEBUG == 1
+        fprintf(stderr, "time ***: %s promoted to GOLD\n", curr_process->name);
+#endif
+    }
+    if (curr_process->type == GOLD && curr_process->quantum_count == 5) {
+        // curr_process->quantum_burst_time = 0;
+        curr_process->promotion_burst_time = 0;
+        curr_process->quantum_count = 0;
+        curr_process->type = PLATINUM;
+#if DEBUG == 1
+        fprintf(stderr, "time ***: %s promoted to PLATINUM\n", curr_process->name);
+#endif
+    }
 }
 
 #endif

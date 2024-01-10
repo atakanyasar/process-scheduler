@@ -15,6 +15,7 @@ typedef struct {
     int num_processes;
     int current_time;
     Process* current_process;
+    Process* last_executed_process;
 } Scheduler;
 
 double get_average_turnaround_time(Scheduler* scheduler) {
@@ -160,28 +161,43 @@ int should_preempt(Scheduler* scheduler, Process* process) {
     return 1;
 }
 
-Process* context_switch(Scheduler* scheduler, Process* switched) {
+void release_process(Scheduler* scheduler) {
     Process* curr_process = scheduler->current_process;
 
-    scheduler->current_process = switched;
+    scheduler->current_process = NULL;
+    if (curr_process == NULL) {
+        return;
+    }
+
+    curr_process->status = READY;
+    add_process_to_queue(curr_process);
+}
+
+void context_switch(Scheduler* scheduler, Process* switched) {
+#if DEBUG == 1
+    if (scheduler->last_executed_process != switched)
+        fprintf(stderr, "time %d: context_switch (%s, %s), duration=10, finished_at=%d\n", 
+            scheduler->current_time, switched->name, 
+            scheduler->current_process == NULL ? "NULL" : scheduler->current_process->name, 
+            scheduler->current_time + CONTEXT_SWITCH_TIME);
+    else
+        fprintf(stderr, "time %d: %s quantum_count=%d\n", scheduler->current_time, switched->name, switched->quantum_count);
+#endif
 
     switched->status = RUNNING;
     switched->quantum_burst_time = 0;
     remove_process_from_queue(switched);
+
+    release_process(scheduler);
+
+    scheduler->current_process = switched;
+
     
-#if DEBUG == 1
-    fprintf(stderr, "time %d: context_switch (%s, %s), duration=10, finished_at=%d\n", 
-        scheduler->current_time, switched->name, curr_process == NULL ? "NULL" : curr_process->name, scheduler->current_time + CONTEXT_SWITCH_TIME);
-#endif
 
-    scheduler->current_time += CONTEXT_SWITCH_TIME;
-
-    if (curr_process != NULL) {
-        curr_process->status = READY;
-        add_process_to_queue(curr_process);
+    if (scheduler->last_executed_process != scheduler->current_process) {
+        scheduler->current_time += CONTEXT_SWITCH_TIME;
     }
 
-    return curr_process;
 }
 
 Process* simulate(Scheduler* scheduler) {
@@ -191,42 +207,55 @@ Process* simulate(Scheduler* scheduler) {
         jump_to_next_process(scheduler);
         handle_arrived_processes(scheduler);
 
-        Process* curr_process = NULL;
-        while ((curr_process = get_next_process(scheduler)) != NULL || scheduler->current_process != NULL) {
-            
-            if (should_preempt(scheduler, curr_process)) {
-                context_switch(scheduler, curr_process);
+        Process* next_process = NULL;
+        while ((next_process = get_next_process(scheduler)) != NULL || scheduler->current_process != NULL) {
+
+            if (should_preempt(scheduler, next_process)) {
+                context_switch(scheduler, next_process);
             } 
-            else {
-                curr_process = scheduler->current_process;
+            
+            Process* curr_process = scheduler->current_process;
+
+            if (curr_process == NULL) {
+                continue;
+            }
+
+            if (curr_process->quantum_burst_time >= get_time_quantum(curr_process)) {
+                curr_process->quantum_burst_time = 0;
             }
 
 #if DEBUG == 1
-            fprintf(stderr, "time %d: %s in CPU, line=%d, %s, duration=%d, finished_at=%d\n", scheduler->current_time, curr_process->name, curr_process->last_instruction, 
+            fprintf(stderr, "time %d: %s in CPU, line=%d, %s, duration=%d, quantum_count=%d, finished_at=%d\n", scheduler->current_time, curr_process->name, curr_process->last_instruction, 
                 curr_process->instructions[curr_process->last_instruction].name, curr_process->instructions[curr_process->last_instruction].duration, 
+                curr_process->quantum_count + (curr_process->quantum_burst_time >= get_time_quantum(curr_process) ? 1 : 0),
                 scheduler->current_time + curr_process->instructions[curr_process->last_instruction].duration);
 #endif
 
             scheduler->current_time += curr_process->instructions[curr_process->last_instruction].duration;
             curr_process->quantum_burst_time += curr_process->instructions[curr_process->last_instruction].duration;
+            curr_process->promotion_burst_time += curr_process->instructions[curr_process->last_instruction].duration;
 
-            if (curr_process->type == SILVER && curr_process->quantum_burst_time >= 3 * get_time_quantum(curr_process)) {
-                curr_process->quantum_burst_time = 0;
-                curr_process->type = GOLD;
+             if (curr_process != NULL) {
+                scheduler->last_executed_process = curr_process;
             }
-            if (curr_process->type == GOLD && curr_process->quantum_burst_time >= 5 * get_time_quantum(curr_process)) {
-                curr_process->quantum_burst_time = 0;
-                curr_process->type = PLATINUM;
-            }
+            
 
-            if (strcmp(curr_process->instructions[curr_process->last_instruction].name, "exit") == 0) {
+            if (strcmp(curr_process->instructions[curr_process->last_instruction++].name, "exit") == 0) {
                 curr_process->status = FINISHED;
                 curr_process->end_time = scheduler->current_time;
                 scheduler->current_process = NULL;
+                handle_arrived_processes(scheduler);
+                continue;
             }
-            curr_process->last_instruction++;
             
             handle_arrived_processes(scheduler);
+
+            if (curr_process->quantum_burst_time >= get_time_quantum(curr_process)) {
+                curr_process->quantum_count++;
+                check_promotions(curr_process);
+                release_process(scheduler);
+            }
+
         } 
     }
 }
