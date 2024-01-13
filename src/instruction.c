@@ -1,12 +1,6 @@
-#ifndef INSTRUCTION_H
-#define INSTRUCTION_H
-
 #include "util.h"
+#include "instruction.h"
 
-typedef struct {
-    char name[MAX_CHAR_SIZE];
-    int duration;
-} Instruction;
 
 Instruction* read_instructions(char* name) {
     Instruction* instructions = (Instruction*)calloc(MAX_INSTRUCTIONS_PER_PROCESS, sizeof(Instruction));
@@ -52,6 +46,3 @@ Instruction* get_instruction(char* name) {
 
     return NULL;
 }
-
-
-#endif

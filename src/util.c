@@ -1,25 +1,4 @@
-#ifndef UTIL_H
-#define UTIL_H
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#define DEBUG 0
-
-#define INSTRUCTIONS_FILE "instructions.txt"
-#define PROCESSES_FOLDER "processes"
-#define SCHEDULE_FILE "definition.txt" // "inputs/def9.txt" // "input.txt" // 
-
-#define MAX_CHAR_SIZE 100
-#define NUM_PROCESSES 10
-
-#define MAX_INSTRUCTIONS_PER_PROCESS 30
-#define MAX_PROCESSES 20
-#define MAX_PRIORITY 256
-
-#define CONTEXT_SWITCH_TIME 10
+#include "util.h"
 
 char* get_next_element(char* str, int* index) {
     char* element = (char*)calloc(MAX_CHAR_SIZE, sizeof(char));
@@ -48,5 +27,3 @@ char** split(char* str) {
 
     return tokens;
 }
-
-#endif

@@ -1,6 +1,4 @@
-#ifndef PRIORITY_QUEUE
-#define PRIORITY_QUEUE
-
+#include "priority_queue.h"
 #include "util.h"
 #include "process.h"
 
@@ -70,5 +68,3 @@ Process* get_next_process() {
     }
     return process_heap[0];
 }
-
-#endif

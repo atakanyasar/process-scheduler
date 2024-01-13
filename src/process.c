@@ -1,43 +1,6 @@
-#ifndef PROCESS_H
-#define PROCESS_H
-
+#include "process.h"
 #include "util.h"
 #include "instruction.h"
-
-typedef enum ProcessType {
-    PLATINUM,
-    GOLD,
-    SILVER
-} ProcessType;
-
-typedef enum TimeQuantum {
-    PLATINUM_TIME_QUANTUM = 100000000, //120,
-    GOLD_TIME_QUANTUM = 120,
-    SILVER_TIME_QUANTUM = 80
-} TimeQuantum;
-
-typedef enum ProcessStatus {
-    WAITING,
-    READY,
-    IN_QUEUE,
-    RUNNING,
-    FINISHED
-} ProcessStatus;
-
-typedef struct {
-    char name[MAX_CHAR_SIZE];
-    Instruction instructions[MAX_INSTRUCTIONS_PER_PROCESS];
-    int num_instructions;
-    int priority;
-    int arrival_time;
-    int end_time;
-    int queue_entry_time;
-    ProcessType type;
-    ProcessStatus status;
-    int last_instruction;
-    int quantum_burst_time;
-    int quantum_count;
-} Process;
 
 Process* read_process(char* name) {
     char* process_file = calloc(MAX_CHAR_SIZE, sizeof(char));
@@ -75,6 +38,30 @@ Process* read_process(char* name) {
     return process;
 }
 
+Process* get_process(char* process_name) {
+    static Process* processes = NULL;
+    static int num_processes = 0;
+    
+    for (int i = 0; i < num_processes && processes != NULL; i++) {
+        if (strcmp(processes[i].name, process_name) == 0) {
+            return &processes[i];
+        }
+    }
+
+    if (processes == NULL) {
+        processes = calloc(MAX_PROCESSES, sizeof(Process));
+    }
+    Process* process = read_process(process_name);
+
+    if (process == NULL) {
+        printf("Error: process %s not found\n", process_name);
+        exit(1);
+    }
+    
+    processes[num_processes++] = *process;
+    return process;
+}
+
 int get_burst_time(Process* process) {
     int burst_time = 0;
     for (int i = 0; i < process->num_instructions; i++) {
@@ -103,30 +90,6 @@ int get_time_quantum(Process* process) {
             printf("Error: process type %d not found\n", process->type);
             exit(1);
     }
-}
-
-Process* get_process(char* process_name) {
-    static Process* processes = NULL;
-    static int num_processes = 0;
-    
-    for (int i = 0; i < num_processes && processes != NULL; i++) {
-        if (strcmp(processes[i].name, process_name) == 0) {
-            return &processes[i];
-        }
-    }
-
-    if (processes == NULL) {
-        processes = calloc(MAX_PROCESSES, sizeof(Process));
-    }
-    Process* process = read_process(process_name);
-
-    if (process == NULL) {
-        printf("Error: process %s not found\n", process_name);
-        exit(1);
-    }
-    
-    processes[num_processes++] = *process;
-    return process;
 }
 
 void check_promotions(Process* curr_process) {
@@ -173,5 +136,3 @@ int compare_processes(Process* A, Process* B) {
     }
     return 0;
 }
-
-#endif

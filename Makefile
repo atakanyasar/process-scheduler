@@ -1,5 +1,5 @@
 compile:
-	gcc scheduler.c -o scheduler
+	gcc main.c src/scheduler.c src/process.c src/util.c src/instruction.c src/priority_queue.c -o scheduler -I include
 
 run: compile
 	./scheduler
@@ -18,11 +18,10 @@ CROSS = ✖
 # Phony Targets
 .PHONY: default test clean
 
-test:
-	@gcc -o scheduler scheduler.c
+test: compile
 
 	@for i in 1 2 3 4 5 6 7 8 9 10 11; do \
-		cp ./inputs/def$$i.txt ./input.txt; \
+		cp ./inputs/def$$i.txt ./definition.txt; \
 		./scheduler > ./output.txt; \
 		if diff ./output.txt ./inputs/out$$i.txt > /dev/null; then \
 			echo "• \033[92mTest $$i Passed ✓\033[0m"; \

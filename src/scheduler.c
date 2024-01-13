@@ -5,18 +5,11 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 
+#include "scheduler.h"
 #include "util.h"
 #include "instruction.h"
 #include "process.h"
 #include "priority_queue.h"
-
-typedef struct {
-    Process processes[MAX_PROCESSES];
-    int num_processes;
-    int current_time;
-    Process* current_process;
-    Process* last_executed_process;
-} Scheduler;
 
 double get_average_turnaround_time(Scheduler* scheduler) {
     long long int total_turnaround_time = 0;
@@ -178,9 +171,9 @@ void context_switch(Scheduler* scheduler) {
 
 #if DEBUG == 1
     if (scheduler->last_executed_process != switched)
-        fprintf(stderr, "time %d: context_switch (%s, %s), duration=10, finished_at=%d\n", 
-            scheduler->current_time, switched->name, 
-            scheduler->current_process == NULL ? "NULL" : scheduler->current_process->name, 
+        fprintf(stderr, "time %d: context_switch (%s), duration=10, finished_at=%d\n", 
+            scheduler->current_time, 
+            switched->name, 
             scheduler->current_time + CONTEXT_SWITCH_TIME);
     else
         fprintf(stderr, "time %d: %s quantum_count=%d\n", scheduler->current_time, switched->name, switched->quantum_count);
@@ -197,12 +190,10 @@ void context_switch(Scheduler* scheduler) {
 
 }
 
-Process* simulate(Scheduler* scheduler) {
-
+void simulate(Scheduler* scheduler) {
 
     while (all_processes_finished(scheduler) == 0) {
         jump_to_next_process(scheduler);
-        handle_arrived_processes(scheduler);
 
         while (1) {
 
@@ -220,8 +211,12 @@ Process* simulate(Scheduler* scheduler) {
             }
 
 #if DEBUG == 1
-            fprintf(stderr, "time %d: %s in CPU, line=%d, %s, duration=%d, quantum_count=%d, finished_at=%d\n", scheduler->current_time, curr_process->name, curr_process->last_instruction, 
-                curr_process->instructions[curr_process->last_instruction].name, curr_process->instructions[curr_process->last_instruction].duration, 
+            fprintf(stderr, "time %d: %s in CPU, line=%d, %s, duration=%d, quantum_count=%d, finished_at=%d\n", 
+                scheduler->current_time, 
+                curr_process->name, 
+                curr_process->last_instruction, 
+                curr_process->instructions[curr_process->last_instruction].name, 
+                curr_process->instructions[curr_process->last_instruction].duration, 
                 curr_process->quantum_count + (curr_process->quantum_burst_time >= get_time_quantum(curr_process) ? 1 : 0),
                 scheduler->current_time + curr_process->instructions[curr_process->last_instruction].duration);
 #endif
@@ -244,30 +239,4 @@ Process* simulate(Scheduler* scheduler) {
 
         } 
     }
-}
-int main() {
-
-    Scheduler* scheduler = read_processes();
-    simulate(scheduler);
-    
-    // print 1 significant digit after the decimal point
-    // but if the number is an integer, don't print the decimal point
-
-    if (get_average_waiting_time(scheduler) == (int)get_average_waiting_time(scheduler)) {
-        printf("%d\n", (int)get_average_waiting_time(scheduler));
-    } else {
-        printf("%.1f\n", get_average_waiting_time(scheduler));
-    }
-
-    if (get_average_turnaround_time(scheduler) == (int)get_average_turnaround_time(scheduler)) {
-        printf("%d\n", (int)get_average_turnaround_time(scheduler));
-    } else {
-        printf("%.1f\n", get_average_turnaround_time(scheduler));
-    }
-
-    //printf("%.1f\n", get_average_waiting_time(scheduler));
-    //printf("%.1f\n", get_average_turnaround_time(scheduler));
-
-
-    return 0;
 }
