@@ -36,39 +36,8 @@ typedef struct {
     ProcessStatus status;
     int last_instruction;
     int quantum_burst_time;
-    int promotion_burst_time;
     int quantum_count;
 } Process;
-
-int get_burst_time(Process* process) {
-    int burst_time = 0;
-    for (int i = 0; i < process->num_instructions; i++) {
-        burst_time += process->instructions[i].duration;
-    }
-    return burst_time;
-}
-
-int get_turnaround_time(Process* process) {
-    return process->end_time - process->arrival_time;
-}
-
-int get_waiting_time(Process* process) {
-    return get_turnaround_time(process) - get_burst_time(process);
-}
-
-int get_time_quantum(Process* process) {
-    switch (process->type) {
-        case PLATINUM:
-            return PLATINUM_TIME_QUANTUM;
-        case GOLD:
-            return GOLD_TIME_QUANTUM;
-        case SILVER:
-            return SILVER_TIME_QUANTUM;
-        default:
-            printf("Error: process type %d not found\n", process->type);
-            exit(1);
-    }
-}
 
 Process* read_process(char* name) {
     char* process_file = calloc(MAX_CHAR_SIZE, sizeof(char));
@@ -106,6 +75,36 @@ Process* read_process(char* name) {
     return process;
 }
 
+int get_burst_time(Process* process) {
+    int burst_time = 0;
+    for (int i = 0; i < process->num_instructions; i++) {
+        burst_time += process->instructions[i].duration;
+    }
+    return burst_time;
+}
+
+int get_turnaround_time(Process* process) {
+    return process->end_time - process->arrival_time;
+}
+
+int get_waiting_time(Process* process) {
+    return get_turnaround_time(process) - get_burst_time(process);
+}
+
+int get_time_quantum(Process* process) {
+    switch (process->type) {
+        case PLATINUM:
+            return PLATINUM_TIME_QUANTUM;
+        case GOLD:
+            return GOLD_TIME_QUANTUM;
+        case SILVER:
+            return SILVER_TIME_QUANTUM;
+        default:
+            printf("Error: process type %d not found\n", process->type);
+            exit(1);
+    }
+}
+
 Process* get_process(char* process_name) {
     static Process* processes = NULL;
     static int num_processes = 0;
@@ -132,7 +131,6 @@ Process* get_process(char* process_name) {
 
 void check_promotions(Process* curr_process) {
     if (curr_process->type == SILVER && curr_process->quantum_count == 3) {
-        // curr_process->quantum_burst_time = 0;
         curr_process->promotion_burst_time = 0;
         curr_process->quantum_count = 0;
         curr_process->type = GOLD;
@@ -141,7 +139,6 @@ void check_promotions(Process* curr_process) {
 #endif
     }
     if (curr_process->type == GOLD && curr_process->quantum_count == 5) {
-        // curr_process->quantum_burst_time = 0;
         curr_process->promotion_burst_time = 0;
         curr_process->quantum_count = 0;
         curr_process->type = PLATINUM;
@@ -149,6 +146,34 @@ void check_promotions(Process* curr_process) {
         fprintf(stderr, "time ***: %s promoted to PLATINUM\n", curr_process->name);
 #endif
     }
+}
+
+int compare_processes(Process* A, Process* B) {
+    if (A->type == PLATINUM && B->type != PLATINUM) {
+        return -1;
+    }
+    if (A->type != PLATINUM && B->type == PLATINUM) {
+        return 1;
+    }
+    if (A->priority > B->priority) {
+        return -1;
+    }
+    if (A->priority < B->priority) {
+        return 1;
+    }
+    if (A->queue_entry_time < B->queue_entry_time) {
+        return -1;
+    }
+    if (A->queue_entry_time > B->queue_entry_time) {
+        return 1;
+    }
+    if (strcmp(A->name, B->name) < 0) {
+        return -1;
+    }
+    if (strcmp(A->name, B->name) > 0) {
+        return 1;
+    }
+    return 0;
 }
 
 #endif

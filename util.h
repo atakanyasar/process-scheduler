@@ -6,17 +6,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define INSTRUCTIONS_FILE "instructions.txt"
 #define PROCESSES_FOLDER "processes"
-#define SCHEDULE_FILE "inputs/def8.txt" //"input.txt" // // "definition.txt"
+#define SCHEDULE_FILE "definition.txt" // "inputs/def9.txt" // "input.txt" // 
 
 #define MAX_CHAR_SIZE 100
 #define NUM_PROCESSES 10
 
-#define MAX_INSTRUCTIONS_PER_PROCESS 100
-#define MAX_PROCESSES 100
+#define MAX_INSTRUCTIONS_PER_PROCESS 30
+#define MAX_PROCESSES 20
 #define MAX_PRIORITY 256
 
 #define CONTEXT_SWITCH_TIME 10

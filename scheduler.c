@@ -8,7 +8,7 @@
 #include "util.h"
 #include "instruction.h"
 #include "process.h"
-#include "round_robin_queue.h"
+#include "priority_queue.h"
 
 typedef struct {
     Process processes[MAX_PROCESSES];
@@ -101,42 +101,18 @@ Process* jump_to_next_process(Scheduler* scheduler) {
 }
 
 void handle_arrived_processes(Scheduler* scheduler) {
-    Process* arrived_process = NULL;
-    do {
-        arrived_process = NULL;
 
-        for (int i = 0; i < scheduler->num_processes; i++) {
-            Process* process = &scheduler->processes[i];
-            if (process->status == FINISHED) {
-                continue;
-            }
-            if (process->status == IN_QUEUE) {
-                continue;
-            }
-            if (process->status == RUNNING) {
-                continue;
-            }
-            if (process->arrival_time <= scheduler->current_time) {
-                if (arrived_process == NULL) {
-                    arrived_process = process;
-                }
-                else if (process->queue_entry_time < arrived_process->queue_entry_time) {
-                    arrived_process = process;
-                }
-                else if (process->queue_entry_time == arrived_process->queue_entry_time && strcmp(process->name, arrived_process->name) < 0) {
-                    arrived_process = process;
-                }
-            }
+    for (int i = 0; i < scheduler->num_processes; i++) {
+        Process* process = &scheduler->processes[i];
+        if (process->status != WAITING) {
+            continue;
         }
-
-        if (arrived_process == NULL) {
-            break;
+        if (process->arrival_time <= scheduler->current_time) {
+            process->status = READY;
+            process->queue_entry_time = process->arrival_time;
+            push_to_process_queue(process);
         }
-
-        arrived_process->status = IN_QUEUE;
-        add_process_to_queue(arrived_process);
-
-    } while (arrived_process != NULL);
+    }
     
 }
 
@@ -186,9 +162,19 @@ void release_process(Scheduler* scheduler) {
 
     curr_process->status = READY;
     curr_process->queue_entry_time = scheduler->current_time;
+    curr_process->quantum_count++;
+    curr_process->quantum_burst_time = 0;
+    check_promotions(curr_process);
+    push_to_process_queue(curr_process);
+
 }
 
-void context_switch(Scheduler* scheduler, Process* switched) {
+void context_switch(Scheduler* scheduler) {
+    Process* switched = get_next_process();
+
+    if (switched == NULL) {
+        return;
+    }
 
 #if DEBUG == 1
     if (scheduler->last_executed_process != switched)
@@ -202,13 +188,8 @@ void context_switch(Scheduler* scheduler, Process* switched) {
 
     switched->status = RUNNING;
     switched->quantum_burst_time = 0;
-    remove_process_from_queue(switched);
-
-    release_process(scheduler);
-
+    pop_from_process_queue();
     scheduler->current_process = switched;
-
-    
 
     if (scheduler->last_executed_process != scheduler->current_process) {
         scheduler->current_time += CONTEXT_SWITCH_TIME;
@@ -223,21 +204,19 @@ Process* simulate(Scheduler* scheduler) {
         jump_to_next_process(scheduler);
         handle_arrived_processes(scheduler);
 
-        Process* next_process = NULL;
-        while ((next_process = get_next_process(scheduler)) != NULL || scheduler->current_process != NULL) {
+        while (1) {
 
-            if (should_preempt(scheduler, next_process)) {
-                context_switch(scheduler, next_process);
+            handle_arrived_processes(scheduler);
+
+            if (should_preempt(scheduler, get_next_process())) {
+                release_process(scheduler);
+                context_switch(scheduler);
             } 
             
             Process* curr_process = scheduler->current_process;
 
             if (curr_process == NULL) {
-                continue;
-            }
-
-            if (curr_process->quantum_burst_time >= get_time_quantum(curr_process)) {
-                curr_process->quantum_burst_time = 0;
+                break;
             }
 
 #if DEBUG == 1
@@ -249,28 +228,19 @@ Process* simulate(Scheduler* scheduler) {
 
             scheduler->current_time += curr_process->instructions[curr_process->last_instruction].duration;
             curr_process->quantum_burst_time += curr_process->instructions[curr_process->last_instruction].duration;
-            curr_process->promotion_burst_time += curr_process->instructions[curr_process->last_instruction].duration;
 
-             if (curr_process != NULL) {
-                scheduler->last_executed_process = curr_process;
-            }
+            scheduler->last_executed_process = curr_process;
             
-
             if (strcmp(curr_process->instructions[curr_process->last_instruction++].name, "exit") == 0) {
                 curr_process->status = FINISHED;
                 curr_process->end_time = scheduler->current_time;
                 scheduler->current_process = NULL;
-                handle_arrived_processes(scheduler);
                 continue;
             }
 
             if (curr_process->quantum_burst_time >= get_time_quantum(curr_process)) {
-                curr_process->quantum_count++;
-                check_promotions(curr_process);
                 release_process(scheduler);
             }
-            
-            handle_arrived_processes(scheduler);
 
         } 
     }
