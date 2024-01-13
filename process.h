@@ -131,7 +131,6 @@ Process* get_process(char* process_name) {
 
 void check_promotions(Process* curr_process) {
     if (curr_process->type == SILVER && curr_process->quantum_count == 3) {
-        curr_process->promotion_burst_time = 0;
         curr_process->quantum_count = 0;
         curr_process->type = GOLD;
 #if DEBUG == 1
@@ -139,7 +138,6 @@ void check_promotions(Process* curr_process) {
 #endif
     }
     if (curr_process->type == GOLD && curr_process->quantum_count == 5) {
-        curr_process->promotion_burst_time = 0;
         curr_process->quantum_count = 0;
         curr_process->type = PLATINUM;
 #if DEBUG == 1
