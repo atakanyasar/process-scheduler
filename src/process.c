@@ -9,8 +9,14 @@ Process* read_process(char* name) {
     FILE* file = fopen(process_file, "r");
     
     if (file == NULL) {
-        printf("Error opening file %s\n", process_file);
-        exit(1);
+
+        sprintf(process_file, "%s.txt", name);
+        file = fopen(process_file, "r");
+
+        if (file == NULL) {
+            printf("Error opening file %s\n", process_file);
+            exit(1);
+        }
     }
     
     Process* process = calloc(1, sizeof(Process));
